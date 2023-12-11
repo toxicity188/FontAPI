@@ -105,7 +105,8 @@ object ResourcePackManagerImpl: ResourcePackManager {
                                 Font.createFont(Font.TRUETYPE_FONT, it)
                             }.deriveFont(yaml.size.coerceAtLeast(16F))
                             val size = ceil(yaml.size).toInt()
-                            val imageList = HashMap<FontRange, MutableList<Pair<Char, BufferedImage>>>()
+                            val imageList = HashMap<Int, MutableList<Pair<Char, BufferedImage>>>()
+                            val fontHeight = ceil(size * 1.4).toInt()
                             (Char.MIN_VALUE..Char.MAX_VALUE).forEach {
                                 if (fontFile.canDisplay(it)) {
                                     getSubImage(BufferedImage(size, ceil(size * 1.4).toInt(), BufferedImage.TYPE_INT_ARGB).apply {
@@ -117,36 +118,33 @@ object ResourcePackManagerImpl: ResourcePackManager {
                                             dispose()
                                         }
                                     })?.let { image ->
-                                        imageList.getOrPut(FontRange(image.width, image.height)) {
+                                        imageList.getOrPut(image.width) {
                                             ArrayList()
                                         }.add(it to image)
                                     }
                                 }
                             }
-                            var max = 0
                             imageList.forEach { entry ->
-                                val imageSize = entry.key
+                                val imageSize = FontRange(entry.key, fontHeight)
                                 val targetList = entry.value
-
-                                if (imageSize.height > max) max = imageSize.height
 
                                 var i = 0
                                 var sizeIndex = 0
                                 val square = FONT_RENDER_RANGE * FONT_RENDER_RANGE
 
                                 fun save(list: MutableList<Pair<Char, BufferedImage>>) {
-                                    val name = "${file.nameWithoutExtension}_${imageSize.width}_${imageSize.height}_${++i}.png"
-                                    val addList = contentMap.getOrPut(FontImage(name, entry.key)) {
+                                    val name = "${file.nameWithoutExtension}_${imageSize.width}_${++i}.png"
+                                    val addList = contentMap.getOrPut(FontImage(name, imageSize)) {
                                         ArrayList()
                                     }
-                                    BufferedImage(imageSize.width * FONT_RENDER_RANGE.coerceAtMost(list.size), imageSize.height * (list.size / FONT_RENDER_RANGE).coerceAtLeast(1), BufferedImage.TYPE_INT_ARGB).apply {
+                                    BufferedImage(imageSize.width * FONT_RENDER_RANGE.coerceAtMost(list.size), fontHeight * (list.size / FONT_RENDER_RANGE).coerceAtLeast(1), BufferedImage.TYPE_INT_ARGB).apply {
                                         createGraphics().run {
                                             composite = alphaComposite
                                             renderingHints[RenderingHints.KEY_TEXT_ANTIALIASING] = RenderingHints.VALUE_TEXT_ANTIALIAS_ON
                                             renderingHints[RenderingHints.KEY_FRACTIONALMETRICS] = RenderingHints.VALUE_FRACTIONALMETRICS_ON
                                             list.forEachIndexed { index, pair ->
                                                 addList.add(pair.first)
-                                                drawImage(pair.second, (index % FONT_RENDER_RANGE) * imageSize.width, (index / FONT_RENDER_RANGE) * imageSize.height, null, null)
+                                                drawImage(pair.second, (index % FONT_RENDER_RANGE) * imageSize.width, (index / FONT_RENDER_RANGE) * fontHeight, null, null)
                                             }
                                             dispose()
                                         }
@@ -158,7 +156,6 @@ object ResourcePackManagerImpl: ResourcePackManager {
 
                                 while (sizeIndex < targetList.size) {
                                     val subList = targetList.subList(sizeIndex, (sizeIndex + square).coerceAtMost(targetList.size))
-
 
                                     if (subList.size == square) {
                                         save(subList)
@@ -175,7 +172,7 @@ object ResourcePackManagerImpl: ResourcePackManager {
                                 }
                             }
                             map["$prefix${file.name}"] = FontContent(
-                                max,
+                                fontHeight,
                                 contentMap
                             )
                         }.onFailure {
@@ -255,13 +252,13 @@ object ResourcePackManagerImpl: ResourcePackManager {
                                     GSON.fromJson(reader, FontImageJson::class.java)
                                 }
                                 png.readToImage().onSuccess { rawImage ->
-                                    getSubImage(rawImage)?.let { newSubImage ->
+                                    getSubImageCompletely(rawImage)?.let { newSubImage ->
                                         val outputFile = File(assetTexturesImage, it.value)
                                         newSubImage.saveTo(outputFile).onSuccess { _ ->
                                             array.add(JsonObject().apply {
                                                 addProperty("type", "bitmap")
                                                 addProperty("file", "fontapi:image/${it.value}")
-                                                addProperty("ascent", -ceil(pngMeta.multiplier * (loadAsset.maxHeight - newSubImage.height) + line).toInt() + ceil(loadAsset.maxHeight * pngMeta.multiplier).toInt() + pngMeta.ascent)
+                                                addProperty("ascent", -line + pngMeta.ascent + ceil(newSubImage.height * pngMeta.multiplier).toInt())
                                                 addProperty("height", ceil(newSubImage.height * pngMeta.multiplier).toInt())
                                                 val comp = (++image).toComponentChar()
                                                 add("chars", JsonArray().apply {
@@ -316,6 +313,32 @@ object ResourcePackManagerImpl: ResourcePackManager {
     }
 
     private fun getSubImage(image: BufferedImage): BufferedImage? {
+
+        var widthA = 0
+        var widthB = image.width
+
+        for (i1 in 0..<image.width) {
+            for (i2 in 0..<image.height) {
+                if (image.getRGB(i1, i2) != 0) {
+                    if (widthA < i1) widthA = i1
+                    if (widthB > i1) widthB = i1
+                }
+            }
+        }
+        val width = widthA - widthB + 1
+
+        if (width <= 0) return null
+
+        val newImage = BufferedImage(width, image.height, BufferedImage.TYPE_INT_ARGB)
+        val graphics = newImage.createGraphics()
+        graphics.composite = AlphaComposite.getInstance(AlphaComposite.SRC_OVER)
+
+        graphics.drawImage(image.getSubimage(widthB, 0, width, image.height), null, null)
+
+        graphics.dispose()
+        return newImage
+    }
+    private fun getSubImageCompletely(image: BufferedImage): BufferedImage? {
         var heightA = 0
         var heightB = image.height
 
