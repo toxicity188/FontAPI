@@ -1,0 +1,15 @@
+main: kor.toxicity.font.example.FontAPIExample
+version: 1.0
+name: FontAPIExample
+api-version: 1.17
+author: toxicity
+description: An example plugin for FontAPI.
+depend:
+  - FontAPI
+load: POSTWORLD
+libraries:
+  - "net.kyori:adventure-platform-bukkit:4.3.1"
+commands:
+  testtitle:
+    description: Text title command.
+    usage: /<command>

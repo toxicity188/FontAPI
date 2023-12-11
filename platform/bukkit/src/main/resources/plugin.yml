@@ -1,0 +1,17 @@
+name: FontAPI
+main: kor.toxicity.font.platform.FontPlatformBukkit
+version: "${version}"
+author: toxicity
+api-version: 1.17
+load: POSTWORLD
+description: An API for font.
+libraries:
+  - "net.kyori:adventure-api:4.14.0"
+commands:
+  fontapi:
+    description: A reload command of FontAPI.
+    usage: /<command>
+permissions:
+  fontapi.reload:
+    description: Access to reload command of FontAPI.
+    default: op

@@ -1,0 +1,4 @@
+name: FontAPI
+main: kor.toxicity.font.platform.FontPlatformBungee
+version: "${version}"
+author: toxicity
