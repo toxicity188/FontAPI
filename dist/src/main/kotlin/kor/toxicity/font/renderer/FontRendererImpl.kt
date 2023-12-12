@@ -8,6 +8,8 @@ import kor.toxicity.font.api.renderer.ComponentKey
 import kor.toxicity.font.api.renderer.FontAlign
 import kor.toxicity.font.api.renderer.FontContent
 import kor.toxicity.font.api.renderer.FontRenderer
+import kor.toxicity.font.extension.NEGATIVE_ONE_SPACE
+import kor.toxicity.font.extension.NEW_LAYER
 import kor.toxicity.font.extension.toSpaceComponent
 import kor.toxicity.font.parser.FontParserImpl
 import net.kyori.adventure.text.Component
@@ -70,15 +72,21 @@ class FontRendererImpl(
 
         private var comp: WidthComponent = WidthComponent.EMPTY
         private var align = FontAlign.LEFT
+        private var max = 0
 
         override fun align(align: FontAlign): FontRenderer.Builder {
             this.align = align
             return this
         }
 
+        override fun append(component: WidthComponent): FontRenderer.Builder {
+            comp = comp.append(component).append(NEGATIVE_ONE_SPACE).append(NEW_LAYER)
+            if (max < component.width) max = component.width
+            return this
+        }
+
         override fun append(strings: Array<String>): FontRenderer.Builder {
             if (strings.size > key.size) throw ArrayIndexOutOfBoundsException("${strings.size} > ${key.size}")
-            var max = 0
             val map = strings.mapIndexed { index, s ->
                 val width = parserList[index].parse(s)
                 if (max < width.width) max = width.width

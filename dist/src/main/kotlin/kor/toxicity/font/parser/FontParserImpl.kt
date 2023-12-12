@@ -38,6 +38,11 @@ class FontParserImpl private constructor(
                     FontParserTag.tag(null)
                 }
             }
+            put("space") { args, _ ->
+                if (args.isNotEmpty()) runCatching {
+                    FontParserTag.selfClosingTag(args[0].toInt().toSpaceComponent())
+                }.getOrNull() ?: FontParserTag.selfClosingTag(null) else FontParserTag.selfClosingTag(null)
+            }
         }
     }
     constructor(space: Int, preProcess: (Int, Char) -> FontParserContext?): this(space, preProcess, defaultMap)

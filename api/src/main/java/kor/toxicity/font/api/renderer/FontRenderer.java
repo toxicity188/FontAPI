@@ -16,6 +16,7 @@ public interface FontRenderer {
     @NotNull Builder builder();
     interface Builder {
         @NotNull Builder align(@NotNull FontAlign align);
+        @NotNull Builder append(@NotNull WidthComponent component);
         @NotNull Builder append(@NotNull String[] strings);
         @NotNull WidthComponent build();
     }
